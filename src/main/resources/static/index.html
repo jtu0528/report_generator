@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>校務部工作月報生成系統</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Microsoft JhengHei", sans-serif;
+            background-color: #f0f2f5;
+            margin: 0;
+            padding: 25px;
+            color: #333;
+        }
+        .container {
+            max-width: 680px;
+            margin: 0 auto;
+            background: #fff;
+            padding: 25px 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+        h2 {
+            margin-top: 0;
+            color: #1a365d;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 10px;
+        }
+        .form-group {
+            margin-bottom: 18px;
+        }
+        label.main-label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 6px;
+            color: #2d3748;
+        }
+        .desc {
+            font-size: 12px;
+            color: #718096;
+            margin-top: 3px;
+        }
+        select, input[type="text"], textarea {
+            width: 100%;
+            padding: 8px 10px;
+            border: 1px solid #cbd5e0;
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-size: 14px;
+        }
+        input[type="file"] {
+            margin-top: 4px;
+        }
+        
+        /* 專案報告動態區塊 */
+        .project-section {
+            border: 1px solid #e2e8f0;
+            background: #f8fafc;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 6px;
+        }
+        .project-card {
+            background: #fff;
+            border: 1px solid #cbd5e0;
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 12px;
+            position: relative;
+        }
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        .btn-remove {
+            background: #e53e3e;
+            color: #fff;
+            border: none;
+            padding: 4px 8px;
+            font-size: 12px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .btn-add {
+            background: #4a5568;
+            color: #fff;
+            border: none;
+            padding: 7px 14px;
+            font-size: 13px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .btn-add:hover { background: #2d3748; }
+
+        button.submit-btn {
+            background-color: #3182ce;
+            color: #fff;
+            border: none;
+            padding: 12px 20px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 15px;
+        }
+        button.submit-btn:hover { background-color: #2b6cb0; }
+        button.submit-btn:disabled { background-color: #a0aec0; cursor: not-allowed; }
+        #loading {
+            display: none;
+            text-align: center;
+            margin-top: 12px;
+            color: #3182ce;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>校務部工作月報生成系統</h2>
+
+    <form id="reportForm">
+        <!-- 目標月份 -->
+        <div class="form-group">
+            <label class="main-label">目標月份：</label>
+            <select id="targetMonth" required>
+                <option value="1月">1月</option>
+                <option value="2月">2月</option>
+                <option value="3月">3月</option>
+                <option value="4月">4月</option>
+                <option value="5月">5月</option>
+                <option value="6月">6月</option>
+                <option value="7月">7月</option>
+                <option value="8月" selected>8月</option>
+                <option value="9月">9月</option>
+                <option value="10月">10月</option>
+                <option value="11月">11月</option>
+                <option value="12月">12月</option>
+            </select>
+        </div>
+
+        <!-- 檔案 1: 學生人數統計明細 -->
+        <div class="form-group">
+            <label class="main-label">1. 學生人數統計明細表：</label>
+            <input type="file" id="excelMain" accept=".xls,.xlsx" required>
+            <div class="desc">對應檔案：115年學生人數統計明細.xls</div>
+        </div>
+
+        <!-- 檔案 2: 經營目標規畫學習表 或 佳音.xlsx -->
+        <div class="form-group">
+            <label class="main-label">2. 招生人數規劃表：</label>
+            <input type="file" id="excelEnrollment" accept=".xls,.xlsx" required>
+            <div class="desc">對應檔案：每月人數統計+各年級統計.xlsx </div>
+        </div>
+
+        <!-- 檔案 3: 學生人數趨勢分析 -->
+        <div class="form-group">
+            <label class="main-label">3. 歷年學生人數趨勢分析表：</label>
+            <input type="file" id="excelHistory" accept=".xls,.xlsx" required>
+            <div class="desc">對應檔案：新昌隆分校學生人數趨勢分析.xls</div>
+        </div>
+
+        <!-- 專案報告區塊（完全選填） -->
+        <div class="form-group">
+            <label class="main-label">4. 專案報告項目 <span style="font-size:12px; font-weight:normal; color:#718096;">(選填，沒填會自動完全隱藏)</span></label>
+            <div class="project-section">
+                <div id="projectContainer">
+                    <!-- 動態報告人卡片會產生在此處 -->
+                </div>
+                <button type="button" class="btn-add" onclick="addProjectCard()">＋ 新增報告人</button>
+            </div>
+        </div>
+
+        <button type="submit" class="submit-btn" id="submitBtn">開始生成 A4 列印月報 PDF</button>
+        <div id="loading">正在產出月報 PDF，請稍候...</div>
+    </form>
+</div>
+
+<script>
+    // 動態新增報告人卡片
+    function addProjectCard(defaultName = '', defaultItems = '') {
+        const container = document.getElementById('projectContainer');
+        const card = document.createElement('div');
+        card.className = 'project-card';
+        card.innerHTML = `
+            <div class="card-header">
+                <input type="text" class="proj-name" placeholder="報告人姓名 (例如：Kara)" value="${defaultName}" style="width: 70%;">
+                <button type="button" class="btn-remove" onclick="this.closest('.project-card').remove()">刪除</button>
+            </div>
+            <textarea class="proj-items" rows="3" placeholder="工作事項 (每行一項，例如：&#10;1. 新班開課準備&#10;2. 拼字比賽佈置)">${defaultItems}</textarea>
+        `;
+        container.appendChild(card);
+    }
+
+    document.getElementById('reportForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        const submitBtn = document.getElementById('submitBtn');
+        const loading = document.getElementById('loading');
+        submitBtn.disabled = true;
+        loading.style.display = 'block';
+
+        const formData = new FormData();
+        const targetMonth = document.getElementById('targetMonth').value;
+        formData.append('targetMonth', targetMonth);
+        formData.append('excelMain', document.getElementById('excelMain').files[0]);
+        formData.append('excelEnrollment', document.getElementById('excelEnrollment').files[0]);
+        formData.append('excelHistory', document.getElementById('excelHistory').files[0]);
+
+        // 收集所有填寫的報告人，若名字空或內容空則自動略過
+        const projects = [];
+        document.querySelectorAll('.project-card').forEach(card => {
+            const name = card.querySelector('.proj-name').value.trim();
+            const text = card.querySelector('.proj-items').value.trim();
+            if (name) {
+                const items = text.split('\n')
+                    .map(s => s.trim())
+                    .filter(s => s.length > 0 && s !== '無');
+                if (items.length > 0) {
+                    projects.push({ name: name, items: items });
+                }
+            }
+        });
+
+        // 就算完全沒填，也是傳送合法的空陣列 "[]"
+        formData.append('projectsJson', JSON.stringify(projects));
+
+        try {
+            const response = await fetch('/api/report/generate', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!response.ok) {
+                const errText = await response.text();
+                document.open();
+                document.write(errText);
+                document.close();
+                return;
+            }
+
+            const blob = await response.blob();
+            const downloadUrl = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = downloadUrl;
+            a.download = `校務部工作月報告_${targetMonth}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(downloadUrl);
+
+        } catch (err) {
+            alert('連線失敗：' + err.message);
+        } finally {
+            submitBtn.disabled = false;
+            loading.style.display = 'none';
+        }
+    });
+</script>
+
+</body>
+</html>
